@@ -1,0 +1,18 @@
+energy-grid-game/
+├── README.md (comprehensive documentation)
+├── package.json (dependencies and scripts)
+├── vite.config.ts (build configuration)
+├── tailwind.config.js (styling configuration)
+├── tsconfig.json (TypeScript configuration)
+├── postcss.config.js (CSS processing)
+├── index.html (HTML template)
+├── src/
+│   ├── main.tsx (React entry point)
+│   ├── App.tsx (main application component)
+│   ├── components/
+│   │   ├── EnergyGridGame.tsx (main game component)
+│   │   └── ui/ (reusable UI components)
+│   ├── lib/
+│   │   └── utils.ts (utility functions)
+│   └── styles/
+│       └── globals.css (global styles)
