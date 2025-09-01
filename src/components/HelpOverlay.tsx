@@ -116,7 +116,7 @@ const HelpOverlay: React.FC<HelpOverlayProps> = ({ isOpen, onClose }) => {
                     Earn $100/MWh
                   </div>
                   <div className="text-sm text-green-700">
-                    When you discharge during shortages (demand &gt; solar)
+                     When you discharge during shortages (demand &gt; solar)
                   </div>
                 </div>
                 
@@ -125,7 +125,7 @@ const HelpOverlay: React.FC<HelpOverlayProps> = ({ isOpen, onClose }) => {
                     Pay $20/MWh
                   </div>
                   <div className="text-sm text-orange-700">
-                    When you charge during surplus (solar &gt; demand)
+                     When you charge during surplus (solar &gt; demand)
                   </div>
                 </div>
                 

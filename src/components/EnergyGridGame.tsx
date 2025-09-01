@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react'
 import { Battery, Sun, Flame, Users, Zap, Play, RotateCcw, Plus, HelpCircle, Home } from 'lucide-react'
 import { Button } from './ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
 import WelcomeScreen from './WelcomeScreen'
 import HelpOverlay from './HelpOverlay'
@@ -64,7 +64,7 @@ const EnergyGridGame: React.FC = () => {
   const [isRunning, setIsRunning] = useState(false)
 
   const generateRandomPosition = useCallback((existingEntities: GridEntity[]) => {
-    let x, y
+    let x = 0, y = 0
     let attempts = 0
     do {
       x = Math.floor(Math.random() * 10)
