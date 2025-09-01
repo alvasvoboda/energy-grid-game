@@ -1,8 +1,11 @@
-import React, { useState, useCallback } from 'react'
-import { Battery, Sun, Flame, Users, Zap, Play, RotateCcw, Plus } from 'lucide-react'
+import React, { useState, useCallback, useEffect } from 'react'
+import { Battery, Sun, Flame, Users, Zap, Play, RotateCcw, Plus, HelpCircle, Home } from 'lucide-react'
 import { Button } from './ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
+import WelcomeScreen from './WelcomeScreen'
+import HelpOverlay from './HelpOverlay'
+import GameStats from './GameStats'
 
 interface GridEntity {
   id: string
@@ -47,6 +50,8 @@ interface PlayerBattery extends GridEntity {
 }
 
 const EnergyGridGame: React.FC = () => {
+  const [gameStarted, setGameStarted] = useState(false)
+  const [showHelp, setShowHelp] = useState(false)
   const [customers, setCustomers] = useState<Customer[]>([])
   const [solarFarms, setSolarFarms] = useState<SolarFarm[]>([])
   const [gasPlants, setGasPlants] = useState<GasPlant[]>([])
@@ -56,6 +61,7 @@ const EnergyGridGame: React.FC = () => {
   const [playerRevenue, setPlayerRevenue] = useState(0)
   const [placingBattery, setPlacingBattery] = useState(false)
   const [step, setStep] = useState(0)
+  const [isRunning, setIsRunning] = useState(false)
 
   const generateRandomPosition = useCallback((existingEntities: GridEntity[]) => {
     let x, y
@@ -154,6 +160,7 @@ const EnergyGridGame: React.FC = () => {
     setIsDeficit(false)
     setPlayerRevenue(0)
     setStep(0)
+    setIsRunning(false)
   }, [generateRandomPosition])
 
   const updateSystemState = useCallback(() => {
@@ -298,22 +305,30 @@ const EnergyGridGame: React.FC = () => {
     }
   }, [placingBattery, customers, solarFarms, gasPlants, batteries, playerBattery])
 
-  // Initialize game on mount
-  React.useEffect(() => {
+  const handleStartGame = useCallback(() => {
+    setGameStarted(true)
     initializeGame()
   }, [initializeGame])
 
-  const totalDemand = customers.reduce((sum, customer) => sum + customer.demand, 0)
-  const totalSolar = solarFarms.reduce((sum, farm) => sum + farm.output, 0)
-  const totalGas = gasPlants.reduce((sum, plant) => sum + plant.output, 0)
-  const totalBatteryOutput = batteries.reduce((sum, battery) => sum + Math.max(0, battery.output), 0)
-  const playerBatteryOutput = playerBattery ? Math.max(0, playerBattery.output) : 0
+  const handleBackToWelcome = useCallback(() => {
+    setGameStarted(false)
+    setShowHelp(false)
+    initializeGame()
+  }, [initializeGame])
+
+  // Auto-run simulation
+  useEffect(() => {
+    if (isRunning) {
+      const interval = setInterval(handleStep, 2000)
+      return () => clearInterval(interval)
+    }
+  }, [isRunning, handleStep])
 
   const renderEntity = (entity: GridEntity) => {
     const baseProps = {
       key: entity.id,
-      cx: entity.x * 40 + 20,
-      cy: entity.y * 40 + 20,
+      cx: entity.x * 50 + 25,
+      cy: entity.y * 50 + 25,
     }
 
     switch (entity.type) {
@@ -326,20 +341,21 @@ const EnergyGridGame: React.FC = () => {
                 <g>
                   <circle
                     {...baseProps}
-                    r="8"
+                    r="12"
                     fill={isDeficit ? "#ef4444" : "#3b82f6"}
-                    className={isDeficit ? "animate-pulse" : ""}
+                    className={`${isDeficit ? "animate-pulse" : ""} transition-colors duration-300`}
                   />
                   <Users
-                    x={entity.x * 40 + 12}
-                    y={entity.y * 40 + 12}
+                    x={entity.x * 50 + 17}
+                    y={entity.y * 50 + 17}
                     size={16}
                     color="white"
                   />
                 </g>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Customer: {customer.demand} MWh demand</p>
+                <p className="font-medium">Customer</p>
+                <p>{customer.demand} MW demand</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -352,17 +368,18 @@ const EnergyGridGame: React.FC = () => {
             <Tooltip>
               <TooltipTrigger asChild>
                 <g>
-                  <circle {...baseProps} r="10" fill="#fbbf24" />
+                  <circle {...baseProps} r="14" fill="#fbbf24" className="transition-all duration-300" />
                   <Sun
-                    x={entity.x * 40 + 12}
-                    y={entity.y * 40 + 12}
+                    x={entity.x * 50 + 17}
+                    y={entity.y * 50 + 17}
                     size={16}
                     color="white"
                   />
                 </g>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Solar: {solar.output}/{solar.capacity} MW</p>
+                <p className="font-medium">Solar Farm</p>
+                <p>{solar.output}/{solar.capacity} MW</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -375,17 +392,24 @@ const EnergyGridGame: React.FC = () => {
             <Tooltip>
               <TooltipTrigger asChild>
                 <g>
-                  <circle {...baseProps} r="10" fill="#ef4444" />
+                  <circle 
+                    {...baseProps} 
+                    r="14" 
+                    fill="#ef4444" 
+                    className={`${gas.output > 0 ? 'animate-pulse' : ''} transition-all duration-300`}
+                  />
                   <Flame
-                    x={entity.x * 40 + 12}
-                    y={entity.y * 40 + 12}
+                    x={entity.x * 50 + 17}
+                    y={entity.y * 50 + 17}
                     size={16}
                     color="white"
                   />
                 </g>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Gas Plant: {gas.output}/{gas.capacity} MW</p>
+                <p className="font-medium">Gas Plant</p>
+                <p>{gas.output}/{gas.capacity} MW</p>
+                <p className="text-xs text-gray-500">Expensive backup power</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -393,23 +417,43 @@ const EnergyGridGame: React.FC = () => {
       
       case 'battery':
         const battery = entity as Battery
+        const batteryFillPercent = (battery.currentStorage / battery.maxStorage) * 100
         return (
           <TooltipProvider key={entity.id}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <g>
-                  <circle {...baseProps} r="10" fill="#8b5cf6" />
+                  <circle {...baseProps} r="14" fill="#8b5cf6" className="transition-all duration-300" />
                   <Battery
-                    x={entity.x * 40 + 12}
-                    y={entity.y * 40 + 12}
+                    x={entity.x * 50 + 17}
+                    y={entity.y * 50 + 17}
                     size={16}
                     color="white"
+                  />
+                  {/* Battery level indicator */}
+                  <rect
+                    x={entity.x * 50 + 15}
+                    y={entity.y * 50 + 35}
+                    width="20"
+                    height="4"
+                    fill="rgba(139, 92, 246, 0.3)"
+                    rx="2"
+                  />
+                  <rect
+                    x={entity.x * 50 + 15}
+                    y={entity.y * 50 + 35}
+                    width={20 * (batteryFillPercent / 100)}
+                    height="4"
+                    fill="#8b5cf6"
+                    rx="2"
                   />
                 </g>
               </TooltipTrigger>
               <TooltipContent>
-                <p>NPC Battery: {battery.currentStorage.toFixed(1)}/{battery.maxStorage} MWh</p>
-                <p>Output: {battery.output.toFixed(1)} MW</p>
+                <p className="font-medium">NPC Battery</p>
+                <p>{battery.currentStorage.toFixed(1)}/{battery.maxStorage} MWh stored</p>
+                <p>{battery.output > 0 ? `Discharging: ${battery.output.toFixed(1)} MW` : 
+                     battery.output < 0 ? `Charging: ${Math.abs(battery.output).toFixed(1)} MW` : 'Idle'}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -417,24 +461,44 @@ const EnergyGridGame: React.FC = () => {
       
       case 'playerBattery':
         const playerBat = entity as PlayerBattery
+        const playerFillPercent = (playerBat.currentStorage / playerBat.maxStorage) * 100
         return (
           <TooltipProvider key={entity.id}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <g>
-                  <circle {...baseProps} r="12" fill="#10b981" />
+                  <circle {...baseProps} r="16" fill="#10b981" className="transition-all duration-300 shadow-lg" />
                   <Battery
-                    x={entity.x * 40 + 10}
-                    y={entity.y * 40 + 10}
-                    size={20}
+                    x={entity.x * 50 + 17}
+                    y={entity.y * 50 + 17}
+                    size={16}
                     color="white"
+                  />
+                  {/* Battery level indicator */}
+                  <rect
+                    x={entity.x * 50 + 13}
+                    y={entity.y * 50 + 37}
+                    width="24"
+                    height="6"
+                    fill="rgba(16, 185, 129, 0.3)"
+                    rx="3"
+                  />
+                  <rect
+                    x={entity.x * 50 + 13}
+                    y={entity.y * 50 + 37}
+                    width={24 * (playerFillPercent / 100)}
+                    height="6"
+                    fill="#10b981"
+                    rx="3"
                   />
                 </g>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Your Battery: {playerBat.currentStorage.toFixed(1)}/{playerBat.maxStorage} MWh</p>
-                <p>Output: {playerBat.output.toFixed(1)} MW</p>
+                <p className="font-medium text-green-700">Your Battery</p>
+                <p>{playerBat.currentStorage.toFixed(1)}/{playerBat.maxStorage} MWh stored</p>
                 <p>Capacity: {playerBat.capacity} MW</p>
+                <p>{playerBat.output > 0 ? `💰 Earning: ${playerBat.output.toFixed(1)} MW × $100` : 
+                     playerBat.output < 0 ? `💸 Paying: ${Math.abs(playerBat.output).toFixed(1)} MW × $20` : 'Idle'}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -445,179 +509,182 @@ const EnergyGridGame: React.FC = () => {
     }
   }
 
+  if (!gameStarted) {
+    return (
+      <>
+        <WelcomeScreen onStart={handleStartGame} onShowHelp={() => setShowHelp(true)} />
+        <HelpOverlay isOpen={showHelp} onClose={() => setShowHelp(false)} />
+      </>
+    )
+  }
+
+  const totalDemand = customers.reduce((sum, customer) => sum + customer.demand, 0)
+  const totalSolar = solarFarms.reduce((sum, farm) => sum + farm.output, 0)
+  const totalGas = gasPlants.reduce((sum, plant) => sum + plant.output, 0)
+  const totalBatteryOutput = batteries.reduce((sum, battery) => sum + Math.max(0, battery.output), 0)
+  const playerBatteryOutput = playerBattery ? Math.max(0, playerBattery.output) : 0
+
   return (
-    <div className="w-full max-w-6xl mx-auto p-6 space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Zap className="w-6 h-6" />
-            Energy Grid Trading Game
-          </CardTitle>
-          <CardDescription>
-            Manage battery storage to earn revenue in the electricity market. Step: {step}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Game Grid */}
-            <div className="lg:col-span-2">
-              <div className="border rounded-lg p-4 bg-gray-50">
-                <svg
-                  width="400"
-                  height="400"
-                  className="border bg-white"
-                  onClick={(e) => {
-                    if (placingBattery) {
-                      const rect = e.currentTarget.getBoundingClientRect()
-                      const x = Math.floor((e.clientX - rect.left) / 40)
-                      const y = Math.floor((e.clientY - rect.top) / 40)
-                      handleGridClick(x, y)
-                    }
-                  }}
-                  style={{ cursor: placingBattery ? 'crosshair' : 'default' }}
-                >
-                  {/* Grid lines */}
-                  {Array.from({ length: 11 }, (_, i) => (
-                    <g key={`grid-${i}`}>
-                      <line
-                        x1={i * 40}
-                        y1={0}
-                        x2={i * 40}
-                        y2={400}
-                        stroke="#e5e7eb"
-                        strokeWidth={1}
-                      />
-                      <line
-                        x1={0}
-                        y1={i * 40}
-                        x2={400}
-                        y2={i * 40}
-                        stroke="#e5e7eb"
-                        strokeWidth={1}
-                      />
-                    </g>
-                  ))}
-                  
-                  {/* Render all entities */}
-                  {customers.map(renderEntity)}
-                  {solarFarms.map(renderEntity)}
-                  {gasPlants.map(renderEntity)}
-                  {batteries.map(renderEntity)}
-                  {playerBattery && renderEntity(playerBattery)}
-                </svg>
-                
-                {placingBattery && (
-                  <p className="text-sm text-gray-600 mt-2">
-                    Click on an empty grid intersection to place your battery
-                  </p>
-                )}
+    <>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 p-4">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-green-600 rounded-xl flex items-center justify-center">
+                <Zap className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Energy Grid Trading</h1>
+                <p className="text-sm text-gray-600">Step {step} • {isRunning ? 'Auto-running' : 'Manual mode'}</p>
               </div>
             </div>
+            
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setShowHelp(true)}>
+                <HelpCircle className="w-4 h-4 mr-2" />
+                Help
+              </Button>
+              <Button variant="ghost" size="sm" onClick={handleBackToWelcome}>
+                <Home className="w-4 h-4 mr-2" />
+                Menu
+              </Button>
+            </div>
+          </div>
 
-            {/* Controls and Stats */}
-            <div className="space-y-4">
-              <div className="flex flex-col gap-2">
-                <Button onClick={handleStep} className="w-full">
-                  <Play className="w-4 h-4 mr-2" />
-                  Next Step
-                </Button>
-                <Button onClick={handleReset} variant="outline" className="w-full">
-                  <RotateCcw className="w-4 h-4 mr-2" />
-                  Reset Game
-                </Button>
-                {!playerBattery && (
-                  <Button 
-                    onClick={handleAddPlayerBattery} 
-                    variant="outline" 
-                    className="w-full"
-                    disabled={placingBattery}
+          <div className="grid lg:grid-cols-4 gap-6">
+            {/* Game Grid */}
+            <div className="lg:col-span-3">
+              <Card className="p-6">
+                <div className="mb-4 flex items-center justify-between">
+                  <h2 className="text-lg font-semibold">Electricity Grid</h2>
+                  {placingBattery && (
+                    <div className="text-sm text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
+                      Click empty spot to place battery
+                    </div>
+                  )}
+                </div>
+                
+                <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-4 shadow-inner">
+                  <svg
+                    width="500"
+                    height="500"
+                    className="border-2 border-white bg-white rounded-lg shadow-sm"
+                    onClick={(e) => {
+                      if (placingBattery) {
+                        const rect = e.currentTarget.getBoundingClientRect()
+                        const x = Math.floor((e.clientX - rect.left) / 50)
+                        const y = Math.floor((e.clientY - rect.top) / 50)
+                        handleGridClick(x, y)
+                      }
+                    }}
+                    style={{ cursor: placingBattery ? 'crosshair' : 'default' }}
                   >
-                    <Plus className="w-4 h-4 mr-2" />
-                    {placingBattery ? 'Click to Place' : 'Add Battery'}
+                    {/* Grid lines */}
+                    {Array.from({ length: 11 }, (_, i) => (
+                      <g key={`grid-${i}`}>
+                        <line
+                          x1={i * 50}
+                          y1={0}
+                          x2={i * 50}
+                          y2={500}
+                          stroke="#f3f4f6"
+                          strokeWidth={1}
+                        />
+                        <line
+                          x1={0}
+                          y1={i * 50}
+                          x2={500}
+                          y2={i * 50}
+                          stroke="#f3f4f6"
+                          strokeWidth={1}
+                        />
+                      </g>
+                    ))}
+                    
+                    {/* Render all entities */}
+                    {customers.map(renderEntity)}
+                    {solarFarms.map(renderEntity)}
+                    {gasPlants.map(renderEntity)}
+                    {batteries.map(renderEntity)}
+                    {playerBattery && renderEntity(playerBattery)}
+                  </svg>
+                </div>
+
+                {/* Controls */}
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <Button 
+                    onClick={handleStep} 
+                    disabled={isRunning}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    <Play className="w-4 h-4 mr-2" />
+                    Next Step
                   </Button>
-                )}
-              </div>
-
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg">System Status</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span>Total Demand:</span>
-                    <span className="font-mono">{totalDemand} MW</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Solar Output:</span>
-                    <span className="font-mono">{totalSolar} MW</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Battery Output:</span>
-                    <span className="font-mono">{totalBatteryOutput + playerBatteryOutput} MW</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Gas Output:</span>
-                    <span className="font-mono">{totalGas} MW</span>
-                  </div>
-                  <div className="flex justify-between font-semibold">
-                    <span>System Status:</span>
-                    <span className={isDeficit ? "text-red-600" : "text-green-600"}>
-                      {isDeficit ? "DEFICIT" : "BALANCED"}
-                    </span>
-                  </div>
-                </CardContent>
+                  
+                  <Button 
+                    onClick={() => setIsRunning(!isRunning)}
+                    variant={isRunning ? "destructive" : "outline"}
+                  >
+                    {isRunning ? 'Stop Auto' : 'Auto Run'}
+                  </Button>
+                  
+                  <Button onClick={handleReset} variant="outline">
+                    <RotateCcw className="w-4 h-4 mr-2" />
+                    New Game
+                  </Button>
+                  
+                  {!playerBattery && (
+                    <Button 
+                      onClick={handleAddPlayerBattery} 
+                      variant="outline"
+                      disabled={placingBattery}
+                      className="border-green-300 text-green-700 hover:bg-green-50"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      {placingBattery ? 'Click to Place' : 'Add Your Battery'}
+                    </Button>
+                  )}
+                </div>
               </Card>
+            </div>
 
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg">Entity Count</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span>Customers:</span>
-                    <span>{customers.length}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Solar Farms:</span>
-                    <span>{solarFarms.length}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Gas Plants:</span>
-                    <span>{gasPlants.length}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>NPC Batteries:</span>
-                    <span>{batteries.length}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Your Battery:</span>
-                    <span>{playerBattery ? "1" : "0"}</span>
-                  </div>
-                </CardContent>
-              </Card>
+            {/* Stats Panel */}
+            <div className="lg:col-span-1">
+              <GameStats
+                totalDemand={totalDemand}
+                totalSolar={totalSolar}
+                totalBatteryOutput={totalBatteryOutput + playerBatteryOutput}
+                totalGas={totalGas}
+                isDeficit={isDeficit}
+                playerRevenue={playerRevenue}
+                step={step}
+              />
 
               {playerBattery && (
-                <Card>
+                <Card className="mt-4 border-green-200 bg-green-50">
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-lg">Your Performance</CardTitle>
+                    <CardTitle className="text-lg text-green-800 flex items-center gap-2">
+                      <Battery className="w-5 h-5" />
+                      Your Battery
+                    </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-2 text-sm">
+                  <CardContent className="space-y-3">
                     <div className="flex justify-between">
-                      <span>Revenue:</span>
-                      <span className="font-mono font-semibold">
-                        ${playerRevenue.toFixed(0)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Storage:</span>
-                      <span className="font-mono">
+                      <span className="text-sm text-green-700">Storage</span>
+                      <span className="font-mono text-green-800">
                         {playerBattery.currentStorage.toFixed(1)}/{playerBattery.maxStorage} MWh
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Current Output:</span>
-                      <span className="font-mono">
-                        {playerBattery.output.toFixed(1)} MW
+                      <span className="text-sm text-green-700">Capacity</span>
+                      <span className="font-mono text-green-800">{playerBattery.capacity} MW</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-green-700">Status</span>
+                      <span className="font-mono text-green-800">
+                        {playerBattery.output > 0 ? `Selling ${playerBattery.output.toFixed(1)} MW` : 
+                         playerBattery.output < 0 ? `Buying ${Math.abs(playerBattery.output).toFixed(1)} MW` : 'Idle'}
                       </span>
                     </div>
                   </CardContent>
@@ -625,9 +692,11 @@ const EnergyGridGame: React.FC = () => {
               )}
             </div>
           </div>
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+      </div>
+      
+      <HelpOverlay isOpen={showHelp} onClose={() => setShowHelp(false)} />
+    </>
   )
 }
 
