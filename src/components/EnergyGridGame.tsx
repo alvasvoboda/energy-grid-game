@@ -282,6 +282,7 @@ const EnergyGridGame: React.FC = () => {
   const handleGridClick = useCallback((x: number, y: number) => {
     if (placingBattery) {
       const allEntities = [...customers, ...solarFarms, ...gasPlants, ...batteries]
+      const allEntities: GridEntity[] = [...customers, ...solarFarms, ...gasPlants, ...batteries]
       if (playerBattery) allEntities.push(playerBattery)
       
       const occupied = allEntities.some(entity => entity.x === x && entity.y === y)
